@@ -3,7 +3,24 @@ import Router from 'koa-router';
 import KoaBodyParser from 'koa-bodyparser';
 import * as _ from 'lodash';
 
-const app = new Koa();
+interface ITodo {
+  completed: Boolean;
+  id: String;
+  name: String;
+  time: Number;
+}
+
+interface IResponseBody {
+  code?: Number;
+  message?: String;
+}
+
+interface ICustomContext {
+  todos: ITodo[];
+  body?: IResponseBody;
+}
+
+const app = new Koa<{}, ICustomContext>();
 
 app.use(
   KoaBodyParser({
@@ -11,7 +28,8 @@ app.use(
   }),
 );
 
-const router = new Router();
+app.context.todos = [];
+const router = new Router<{}, ICustomContext>();
 
 const user = {
   username: 'admin',
@@ -19,32 +37,30 @@ const user = {
 };
 
 router.post('/login', ctx => {
-  const body = ctx.request.body;
+  const { body } = ctx.request;
   if (body.username === user.username && body.password === user.password) {
-    ctx.user = user;
+    // ctx.user = user;
   }
 });
 
-router.use(async (ctx, next) => {
-  if (/^\/login/.test(ctx.path) || ctx.user != null) {
-    next();
-  } else {
-    ctx.throw(401, 'access_denied');
-  }
-});
+// router.use(async (ctx, next) => {
+//   if (/^\/login/.test(ctx.path) || ctx.user != null) {
+//     next();
+//   } else {
+//     ctx.throw(401, 'access_denied');
+//   }
+// });
 
-const todos = [];
-
-router.post('addTodo', ctx => {
+router.post('/addTodo', ctx => {
   const todo = ctx.request.body;
   todo.id = _.uniqueId('todo');
-  todos.push(todo);
+  ctx.todos.push(todo);
   ctx.body = todo;
 });
 
 router.post('/updateTodo', ctx => {
   const body = ctx.request.body;
-  const target = _.find(todos, { id: body.id });
+  const target = _.find(ctx.todos, { id: body.id });
   if (target != null) {
     Object.assign(target, body);
   }
@@ -53,9 +69,10 @@ router.post('/updateTodo', ctx => {
 });
 
 router.get('/todos', ctx => {
-  const status = ctx.request.body.status;
+  const { type } = ctx.request.body;
+  let todos = ctx.todos;
   let result;
-  switch (status) {
+  switch (type) {
     case 1:
       result = todos.filter(todo => todo.completed);
       break;
@@ -71,10 +88,15 @@ router.get('/todos', ctx => {
 
 router.post('/deleteTodo', ctx => {
   const body = ctx.request.body;
-  const index = _.findIndex(todos, todo => todo.id === body.id);
+  const index = _.findIndex(ctx.todos, todo => todo.id === body.id);
   if (index !== -1) {
-    todos.split(index, 1);
+    ctx.todos.splice(index, 1);
   }
+
+  ctx.body = {
+    code: 200,
+    message: 'delete successfully!!!',
+  };
 });
 
 router.get('/test/timeout', async ctx => {
