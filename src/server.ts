@@ -68,16 +68,16 @@ router.post('/updateTodo', ctx => {
   ctx.body = target;
 });
 
-router.get('/todos', ctx => {
-  const { type } = ctx.request.body;
+router.get('/todos/:type', ctx => {
+  const type = parseInt(ctx.params.type || 0);
   let todos = ctx.todos;
   let result;
   switch (type) {
     case 1:
-      result = todos.filter(todo => todo.completed);
+      result = todos.filter(todo => !todo.completed);
       break;
     case 2:
-      result = todos.filter(todo => !todo.completed);
+      result = todos.filter(todo => todo.completed);
       break;
     default:
       result = todos;
@@ -87,7 +87,7 @@ router.get('/todos', ctx => {
 });
 
 router.post('/deleteTodo', ctx => {
-  const body = ctx.request.body;
+  const { body } = ctx.request;
   const index = _.findIndex(ctx.todos, todo => todo.id === body.id);
   if (index !== -1) {
     ctx.todos.splice(index, 1);
